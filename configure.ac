@@ -713,7 +713,7 @@ case "$host" in
 	AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <mach-o/dyld.h>
 #include <stdlib.h>
-int main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
+int main(void) { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 		exit(0);
 	else
 		exit(1);
@@ -863,7 +863,8 @@ int main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	check_for_openpty_ctty_bug=1
 	dnl Target SUSv3/POSIX.1-2001 plus BSD specifics.
 	dnl _DEFAULT_SOURCE is the new name for _BSD_SOURCE
-	CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=600 -D_BSD_SOURCE -D_DEFAULT_SOURCE"
+	dnl _GNU_SOURCE is needed for setres*id prototypes.
+	CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE=600 -D_BSD_SOURCE -D_DEFAULT_SOURCE -D_GNU_SOURCE"
 	AC_DEFINE([BROKEN_CLOSEFROM], [1], [broken in chroots on older kernels])
 	AC_DEFINE([PAM_TTY_KLUDGE], [1],
 		[Work around problematic Linux PAM modules handling of PAM_TTY])
@@ -1658,7 +1659,7 @@ AC_ARG_WITH(ldns,
 # include <stdint.h>
 #endif
 #include <ldns/ldns.h>
-int main() { ldns_status status = ldns_verify_trusted(NULL, NULL, NULL, NULL); status=LDNS_STATUS_OK; exit(0); }
+int main(void) { ldns_status status = ldns_verify_trusted(NULL, NULL, NULL, NULL); status=LDNS_STATUS_OK; exit(0); }
 			]])
 		],
 			[AC_MSG_RESULT(yes)],
@@ -2168,8 +2169,9 @@ AC_CHECK_FUNCS([setresuid], [
 	AC_MSG_CHECKING([if setresuid seems to work])
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
-#include <stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
 		]], [[
 	errno=0;
 	setresuid(0,0,0);
@@ -2191,8 +2193,9 @@ AC_CHECK_FUNCS([setresgid], [
 	AC_MSG_CHECKING([if setresgid seems to work])
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
-#include <stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
 		]], [[
 	errno=0;
 	setresgid(0,0,0);
@@ -2373,6 +2376,9 @@ if test ! -z "$check_for_openpty_ctty_bug"; then
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifdef HAVE_PTY_H
+# include <pty.h>
+#endif
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -4259,7 +4265,7 @@ dnl test snprintf (broken on SCO w/gcc)
 #include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_SNPRINTF
-int main()
+int main(void)
 {
 	char buf[50];
 	char expected_out[50];
@@ -4276,7 +4282,7 @@ int main()
 	exit(0);
 }
 #else
-int main() { exit(0); }
+int main(void) { exit(0); }
 #endif
 		]])], [ true ], [ AC_DEFINE([BROKEN_SNPRINTF]) ],
 		AC_MSG_WARN([cross compiling: Assuming working snprintf()])
