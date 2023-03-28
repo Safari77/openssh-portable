@@ -214,14 +214,15 @@ esac
 # The Solaris 64bit targets are special since they need a non-flag arg.
 case "$config" in
     sol64*)
-	CONFIGFLAGS="x86_64 --with-cflags=-m64 --with-ldflags=-m64 ${CONFIGFLAGS}"
-	LIBCRYPTOFLAGS="--with-ssl-dir=/usr/local/ssl64"
+	CONFIGFLAGS="--target=x86_64 --with-cflags=-m64 --with-ldflags=-m64 ${CONFIGFLAGS}"
+	LIBCRYPTOFLAGS="--with-ssl-dir=/usr/local/ssl64 --with-rpath=-Wl,-rpath,"
 	;;
 esac
 
 case "${TARGET_HOST}" in
     aix*)
 	CONFIGFLAGS="--disable-security-key"
+	LIBCRYPTOFLAGS="--without-openssl"
 	# These are slow real or virtual machines so skip the slowest tests
 	# (which tend to be thw ones that transfer lots of data) so that the
 	# test run does not time out.
