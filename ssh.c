@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh.c,v 1.605 2025/02/21 18:22:41 deraadt Exp $ */
+/* $OpenBSD: ssh.c,v 1.609 2025/03/03 06:53:09 dtucker Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -1025,7 +1025,7 @@ main(int ac, char **av)
 			break;
 		case 'l':
 			if (options.user == NULL)
-				options.user = optarg;
+				options.user = xstrdup(optarg);
 			break;
 
 		case 'L':
@@ -1163,8 +1163,6 @@ main(int ac, char **av)
 
 	if (!valid_hostname(host))
 		fatal("hostname contains invalid characters");
-	if (options.user != NULL && !valid_ruser(options.user))
-		fatal("remote username contains invalid characters");
 	options.host_arg = xstrdup(host);
 
 	/* Initialize the command to execute on remote host. */
@@ -1445,11 +1443,28 @@ main(int ac, char **av)
 	    options.host_key_alias : options.host_arg);
 	cinfo->host_arg = xstrdup(options.host_arg);
 	cinfo->remhost = xstrdup(host);
-	cinfo->remuser = xstrdup(options.user);
 	cinfo->homedir = xstrdup(pw->pw_dir);
 	cinfo->locuser = xstrdup(pw->pw_name);
 	cinfo->jmphost = xstrdup(options.jump_host == NULL ?
 	    "" : options.jump_host);
+
+	/*
+	 * Expand User. It cannot contain %r (itself) or %C since User is
+	 * a component of the hash.
+	 */
+	if (options.user != NULL) {
+		if ((p = percent_dollar_expand(options.user,
+		    DEFAULT_CLIENT_PERCENT_EXPAND_ARGS_NOUSER(cinfo),
+		    (char *)NULL)) == NULL)
+			fatal("invalid environment variable expansion");
+		free(options.user);
+		options.user = p;
+		if (!valid_ruser(options.user))
+			fatal("remote username contains invalid characters");
+	}
+
+	/* Now User is expanded, store it an calculate hash. */
+	cinfo->remuser = xstrdup(options.user);
 	cinfo->conn_hash_hex = ssh_connection_hash(cinfo->thishost,
 	    cinfo->remhost, cinfo->portstr, cinfo->remuser, cinfo->jmphost);
 
@@ -1546,6 +1561,28 @@ main(int ac, char **av)
 		free(options.user_hostfiles[j]);
 		free(cp);
 		options.user_hostfiles[j] = p;
+	}
+
+	for (j = 0; j < options.num_setenv; j++) {
+		char *name = options.setenv[j], *value;
+
+		if (name == NULL)
+			continue;
+		/* Expand only the value portion, not the variable name. */
+		if ((value = strchr(name, '=')) == NULL) {
+			/* shouldn't happen; vars are checked in readconf.c */
+			fatal("Invalid config SetEnv: %s", name);
+		}
+		*value++ = '\0';
+		cp = default_client_percent_dollar_expand(value, cinfo);
+		xasprintf(&p, "%s=%s", name, cp);
+		if (strcmp(value, p) != 0) {
+			debug3("expanded SetEnv '%s' '%s' -> '%s'",
+			    name, value, cp);
+		}
+		free(options.setenv[j]);
+		free(cp);
+		options.setenv[j] = p;
 	}
 
 	for (i = 0; i < options.num_local_forwards; i++) {
