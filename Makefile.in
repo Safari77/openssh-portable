@@ -557,7 +557,7 @@ regress-prep:
 	    ln -s `cd $(srcdir) && pwd`/regress/Makefile `pwd`/regress/Makefile
 
 REGRESSLIBS=libssh.a $(LIBCOMPAT)
-TESTLIBS=$(LIBS) $(CHANNELLIBS)
+TESTLIBS=$(LIBS) $(CHANNELLIBS) @TESTLIBS@
 
 regress/modpipe$(EXEEXT): $(srcdir)/regress/modpipe.c $(REGRESSLIBS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(srcdir)/regress/modpipe.c \
@@ -781,6 +781,13 @@ unit: regress-unit-binaries
 		.OBJDIR="$(BUILDDIR)/regress" \
 		OBJ="$(BUILDDIR)/regress" \
 		$@ && echo $@ tests passed
+
+unit-bench: regress-unit-binaries
+	cd $(srcdir)/regress || exit $$?; \
+	$(MAKE) \
+		.CURDIR="$(abs_top_srcdir)/regress" \
+		.OBJDIR="$(BUILDDIR)/regress" \
+		OBJ="$(BUILDDIR)/regress" $@
 
 TEST_SSH_SSHD="$(BUILDDIR)/sshd"
 
