@@ -65,6 +65,12 @@ struct timeval {
 int utimes(const char *, struct timeval *);
 #endif /* HAVE_UTIMES */
 
+#ifndef HAVE_DIRFD
+#include <sys/types.h>
+#include <dirent.h>
+int dirfd(DIR *);
+#endif
+
 #ifndef AT_FDCWD
 # define AT_FDCWD (-2)
 #endif
@@ -75,6 +81,14 @@ int fchmodat(int, const char *, mode_t, int);
 
 #ifndef HAVE_FCHOWNAT
 int fchownat(int, const char *, uid_t, gid_t, int);
+#endif
+
+#ifdef HAVE_FSTATAT
+int fstatat(int, const char *, struct stat *, int);
+#endif
+
+#ifdef HAVE_UNLINKAT
+int unlinkat(int, const char *, int);
 #endif
 
 #ifndef HAVE_TRUNCATE
