@@ -1,8 +1,17 @@
 #!/bin/sh
 
+config="$1"
+target="$2"
+
 PACKAGES=""
 
- . .github/configs $@
+echo Running as:
+id
+
+echo Environment:
+set
+
+ . .github/configs ${config}
 
 host=`./config.guess`
 echo "config.guess: $host"
@@ -15,7 +24,7 @@ case "$host" in
 	set -x
 	setfacl -b . regress
 	icacls regress /c /t /q /Inheritance:d
-	icacls regress /c /t /q /Grant ${LOGNAME}:F
+	icacls regress /c /t /q /Grant ${USERNAME}:F
 	icacls regress /c /t /q /Remove:g "Authenticated Users" \
 	     BUILTIN\\Administrators BUILTIN Everyone System Users
 	takeown /F regress
@@ -32,7 +41,7 @@ case "$host" in
 	PACKAGER=apt
 esac
 
-TARGETS=$@
+TARGETS=${config}
 
 INSTALL_FIDO_PPA="no"
 export DEBIAN_FRONTEND=noninteractive
@@ -289,3 +298,13 @@ if [ ! -z "${INSTALL_PUTTY}" ]; then
     )
     /usr/local/bin/plink -V
 fi
+
+# This is the github "target" as specificed in the yml file.
+case "${target}" in
+ubuntu-latest)
+	echo ubuntu-latest target: setting random password string.
+	pw=$(openssl rand -base64 9)
+	sudo usermod --password "${pw}" runner
+	sudo usermod --unlock runner
+	;;
+esac
