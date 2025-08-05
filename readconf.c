@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.c,v 1.400 2025/06/24 09:22:03 djm Exp $ */
+/* $OpenBSD: readconf.c,v 1.403 2025/07/31 11:23:39 job Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -180,7 +180,7 @@ typedef enum {
 	oPubkeyAcceptedAlgorithms, oCASignatureAlgorithms, oProxyJump,
 	oSecurityKeyProvider, oKnownHostsCommand, oRequiredRSASize,
 	oEnableEscapeCommandline, oObscureKeystrokeTiming, oChannelTimeout,
-	oVersionAddendum,
+	oVersionAddendum, oRefuseConnection,
 	oIgnore, oIgnoredUnknownOption, oDeprecated, oUnsupported
 } OpCodes;
 
@@ -332,6 +332,7 @@ static struct {
 	{ "obscurekeystroketiming", oObscureKeystrokeTiming },
 	{ "channeltimeout", oChannelTimeout },
 	{ "versionaddendum", oVersionAddendum },
+	{ "refuseconnection", oRefuseConnection },
 
 	{ NULL, oBadOption }
 };
@@ -2159,6 +2160,12 @@ parse_pubkey_algos:
 			    filename, linenum, arg);
 			goto out;
 		}
+		if (value == INT_MIN) {
+			debug("%s line %d: Deprecated IPQoS value \"%s\" "
+			    "ignored - using system default instead. Consider"
+			    " using DSCP values.", filename, linenum, arg);
+			value = INT_MAX;
+		}
 		arg = argv_next(&ac, &av);
 		if (arg == NULL)
 			value2 = value;
@@ -2166,6 +2173,12 @@ parse_pubkey_algos:
 			error("%s line %d: Bad IPQoS value: %s",
 			    filename, linenum, arg);
 			goto out;
+		}
+		if (value2 == INT_MIN) {
+			debug("%s line %d: Deprecated IPQoS value \"%s\" "
+			    "ignored - using system default instead. Consider"
+			    " using DSCP values.", filename, linenum, arg);
+			value2 = INT_MAX;
 		}
 		if (*activep && options->ip_qos_interactive == -1) {
 			options->ip_qos_interactive = value;
@@ -2507,6 +2520,19 @@ parse_pubkey_algos:
 				options->version_addendum = xstrdup(str + len);
 		}
 		argv_consume(&ac);
+		break;
+
+	case oRefuseConnection:
+		arg = argv_next(&ac, &av);
+		if (!arg || *arg == '\0') {
+			error("%.200s line %d: Missing argument.",
+			    filename, linenum);
+			goto out;
+		}
+		if (*activep) {
+			fatal("%.200s line %d: RefuseConnection: %s",
+			    filename, linenum, arg);
+		}
 		break;
 
 	case oDeprecated:
@@ -2933,7 +2959,7 @@ fill_default_options(Options * options)
 	if (options->visual_host_key == -1)
 		options->visual_host_key = 0;
 	if (options->ip_qos_interactive == -1)
-		options->ip_qos_interactive = IPTOS_DSCP_AF21;
+		options->ip_qos_interactive = IPTOS_DSCP_EF;
 	if (options->ip_qos_bulk == -1)
 		options->ip_qos_bulk = IPTOS_DSCP_CS1;
 	if (options->request_tty == -1)
