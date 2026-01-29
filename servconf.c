@@ -1,4 +1,4 @@
-/* $OpenBSD: servconf.c,v 1.439 2025/12/08 03:55:22 djm Exp $ */
+/* $OpenBSD: servconf.c,v 1.443 2025/12/19 01:26:39 djm Exp $ */
 /*
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -176,6 +176,7 @@ initialize_server_options(ServerOptions *options)
 	options->per_source_penalty.overflow_mode6 = -1;
 	options->per_source_penalty.penalty_crash = -1.0;
 	options->per_source_penalty.penalty_authfail = -1.0;
+	options->per_source_penalty.penalty_invaliduser = -1.0;
 	options->per_source_penalty.penalty_noauth = -1.0;
 	options->per_source_penalty.penalty_grace = -1.0;
 	options->per_source_penalty.penalty_refuseconnection = -1.0;
@@ -438,6 +439,8 @@ fill_default_server_options(ServerOptions *options)
 		options->per_source_penalty.penalty_grace = 10.0;
 	if (options->per_source_penalty.penalty_authfail < 0.0)
 		options->per_source_penalty.penalty_authfail = 5.0;
+	if (options->per_source_penalty.penalty_invaliduser < 0.0)
+		options->per_source_penalty.penalty_invaliduser = 5.0;
 	if (options->per_source_penalty.penalty_noauth < 0.0)
 		options->per_source_penalty.penalty_noauth = 1.0;
 	if (options->per_source_penalty.penalty_refuseconnection < 0.0)
@@ -1955,8 +1958,8 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 		break;
 
 	case sSubsystem:
-		arg = argv_next(&ac, &av);
-		if (!arg || *arg == '\0')
+		if ((arg = argv_next(&ac, &av)) == NULL || *arg == '\0' ||
+		   ((arg2 = argv_next(&ac, &av)) == NULL || *arg2 == '\0'))
 			fatal("%s line %d: %s missing argument.",
 			    filename, linenum, keyword);
 		if (!*activep) {
@@ -1989,15 +1992,10 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 		    options->num_subsystems + 1,
 		    sizeof(*options->subsystem_args));
 		options->subsystem_name[options->num_subsystems] = xstrdup(arg);
-		arg = argv_next(&ac, &av);
-		if (!arg || *arg == '\0') {
-			fatal("%s line %d: Missing subsystem command.",
-			    filename, linenum);
-		}
 		options->subsystem_command[options->num_subsystems] =
-		    xstrdup(arg);
+		    xstrdup(arg2);
 		/* Collect arguments (separate to executable) */
-		arg = argv_assemble(1, &arg); /* quote command correctly */
+		arg = argv_assemble(1, &arg2); /* quote command correctly */
 		arg2 = argv_assemble(ac, av); /* rest of command */
 		xasprintf(&options->subsystem_args[options->num_subsystems],
 		    "%s%s%s", arg, *arg2 == '\0' ? "" : " ", arg2);
@@ -2115,6 +2113,8 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 				doubleptr = &options->per_source_penalty.penalty_crash;
 			} else if ((q = strprefix(arg, "authfail:", 0)) != NULL) {
 				doubleptr = &options->per_source_penalty.penalty_authfail;
+			} else if ((q = strprefix(arg, "invaliduser:", 0)) != NULL) {
+				doubleptr = &options->per_source_penalty.penalty_invaliduser;
 			} else if ((q = strprefix(arg, "noauth:", 0)) != NULL) {
 				doubleptr = &options->per_source_penalty.penalty_noauth;
 			} else if ((q = strprefix(arg, "grace-exceeded:", 0)) != NULL) {
@@ -2992,7 +2992,7 @@ copy_set_server_options(ServerOptions *dst, ServerOptions *src, int preauth)
 		dst->n = xstrdup(src->n); \
 	} \
 } while(0)
-#define M_CP_STRARRAYOPT(s, num_s) do {\
+#define M_CP_STRARRAYOPT(s, num_s, clobber) do {\
 	u_int i; \
 	if (src->num_s != 0) { \
 		for (i = 0; i < dst->num_s; i++) \
@@ -3001,7 +3001,8 @@ copy_set_server_options(ServerOptions *dst, ServerOptions *src, int preauth)
 		dst->s = xcalloc(src->num_s, sizeof(*dst->s)); \
 		for (i = 0; i < src->num_s; i++) \
 			dst->s[i] = xstrdup(src->s[i]); \
-		dst->num_s = src->num_s; \
+		if (clobber) \
+			dst->num_s = src->num_s; \
 	} \
 } while(0)
 
@@ -3430,12 +3431,14 @@ dump_config(ServerOptions *o)
 
 	if (o->per_source_penalty.enabled) {
 		printf("persourcepenalties crash:%f authfail:%f noauth:%f "
+		    "invaliduser:%f "
 		    "grace-exceeded:%f refuseconnection:%f max:%f min:%f "
 		    "max-sources4:%d max-sources6:%d "
 		    "overflow:%s overflow6:%s\n",
 		    o->per_source_penalty.penalty_crash,
 		    o->per_source_penalty.penalty_authfail,
 		    o->per_source_penalty.penalty_noauth,
+		    o->per_source_penalty.penalty_invaliduser,
 		    o->per_source_penalty.penalty_grace,
 		    o->per_source_penalty.penalty_refuseconnection,
 		    o->per_source_penalty.penalty_max,
