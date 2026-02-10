@@ -14,19 +14,20 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/queue.h>
 #include <sys/stat.h>
 #ifdef __OpenBSD__
 #include <sys/sysctl.h>
 #endif
 
 #include <netinet/in.h>
-#include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #endif
 
 #include <ctype.h>
+#include <glob.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -38,13 +39,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <util.h>
-#ifdef USE_SYSTEM_GLOB
-# include <glob.h>
-#else
-# include "openbsd-compat/glob.h"
-#endif
 
-#include "openbsd-compat/sys-queue.h"
 #include "xmalloc.h"
 #include "ssh.h"
 #include "log.h"
