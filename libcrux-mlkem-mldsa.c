@@ -15,6 +15,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "includes.h"
+
+#if defined(USE_MLDSA) || defined(USE_MLKEM768X25519)
 
 #include <sys/types.h>
 #include <stdint.h>
@@ -424,3 +427,4 @@ sha3_512(uint8_t digest[64], const uint8_t *data, size_t len)
 	Eurydice_mut_borrow_slice_u8 output = { digest, 64 };
 	libcrux_sha3_portable_sha512(output, input);
 }
+#endif /* defined(USE_MLDSA) || defined(USE_MLKEM768X25519) */

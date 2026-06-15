@@ -17,6 +17,10 @@
 
 /* draft-miller-sshm-mldsa44-ed25519-composite-sigs-00 */
 
+#include "includes.h"
+
+#ifdef USE_MLDSA
+
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
@@ -499,3 +503,4 @@ const struct sshkey_impl sshkey_mldsa44_ed25519_cert_impl = {
 	/* .keybits = */	256,
 	/* .funcs = */		&sshkey_mldsa44_ed25519_funcs,
 };
+#endif /* USE_MLDSA */
