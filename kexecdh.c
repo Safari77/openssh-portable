@@ -1,4 +1,4 @@
-/* $OpenBSD: kexecdh.c,v 1.12 2026/02/14 00:18:34 jsg Exp $ */
+/* $OpenBSD: kexecdh.c,v 1.13 2026/07/27 12:28:52 markus Exp $ */
 /*
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
  * Copyright (c) 2019 Markus Friedl.  All rights reserved.
@@ -26,7 +26,7 @@
 
 #include "includes.h"
 
-#if defined(WITH_OPENSSL) && defined(OPENSSL_HAS_ECC)
+#if defined(WITH_OPENSSL)
 
 #include <sys/types.h>
 
@@ -40,10 +40,6 @@
 #include "kex.h"
 #include "sshbuf.h"
 #include "ssherr.h"
-
-static int
-kex_ecdh_dec_key_group(struct kex *, const struct sshbuf *, EC_KEY *key,
-    const EC_GROUP *, struct sshbuf **);
 
 int
 kex_ecdh_keypair(struct kex *kex)
@@ -133,7 +129,7 @@ kex_ecdh_enc(struct kex *kex, const struct sshbuf *client_blob,
 	return r;
 }
 
-static int
+int
 kex_ecdh_dec_key_group(struct kex *kex, const struct sshbuf *ec_blob,
     EC_KEY *key, const EC_GROUP *group, struct sshbuf **shared_secretp)
 {
@@ -208,31 +204,4 @@ kex_ecdh_dec(struct kex *kex, const struct sshbuf *server_blob,
 	return r;
 }
 
-#else
-
-#include "ssherr.h"
-
-struct kex;
-struct sshbuf;
-struct sshkey;
-
-int
-kex_ecdh_keypair(struct kex *kex)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-
-int
-kex_ecdh_enc(struct kex *kex, const struct sshbuf *client_blob,
-    struct sshbuf **server_blobp, struct sshbuf **shared_secretp)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-
-int
-kex_ecdh_dec(struct kex *kex, const struct sshbuf *server_blob,
-    struct sshbuf **shared_secretp)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-#endif /* defined(WITH_OPENSSL) && defined(OPENSSL_HAS_ECC) */
+#endif /* WITH_OPENSSL */
